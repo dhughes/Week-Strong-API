@@ -3,10 +3,12 @@ package net.doughughes.repositories;
 import net.doughughes.entity.Exercise;
 import net.doughughes.entity.Goal;
 import net.doughughes.entity.Program;
+import net.doughughes.entity.Workout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -125,6 +127,10 @@ public class ProgramRepository {
     }
 
     public void generateTestData() {
+
+        System.out.println("--------");
+
+        int userId = 16;
         int programId = 2;
         Random rand = new Random();
         LocalDate createdDate = LocalDate.now().minusDays(20);
@@ -208,22 +214,35 @@ public class ProgramRepository {
             }
         }
 
-        long between = DAYS.between(testDate, LocalDate.now()) - 2;
+        // create the workout data
+        long between = DAYS.between(testDate, LocalDate.now()) - 1;
         boolean skipped = false;
+        int skipCount = 0;
         for (int days = 1; days <= between; days++) {
             LocalDate thisDay = testDate.plusDays(days);
             int dayOfWeek = thisDay.getDayOfWeek().getValue();
 
             // is this a workout day?
-            if (dayOfWeek == day1 || dayOfWeek == day2 || dayOfWeek == day3 || skipped) {
-                skipped = false;
-                System.out.println(thisDay);
+            if (dayOfWeek == (day1 == 0 ? 7 : day1) ||
+                    dayOfWeek == (day2 == 0 ? 7 : day2) ||
+                    dayOfWeek == (day3 == 0 ? 7 : day3) || skipped) {
+
+                //System.out.println(thisDay);
 
                 // did we miss this day?
-                if (rand.nextInt(4) == 0) {
+                if (rand.nextInt(6) == 0) {
+                    System.out.printf("** Skipping workout on %s **\n", thisDay);
                     skipped = true;
+                    skipCount++;
                     continue;
                 }
+                if (!(dayOfWeek == (day1 == 0 ? 7 : day1) ||
+                        dayOfWeek == (day2 == 0 ? 7 : day2) ||
+                        dayOfWeek == (day3 == 0 ? 7 : day3)))
+                    System.out.printf("** Doing makeup workout on %s **\n", thisDay);
+
+                // reset the skipped state
+                skipped = false;
 
                 // create the workout
                 Integer workoutId = this.template.queryForObject("" +
@@ -250,9 +269,30 @@ public class ProgramRepository {
                     }
                 }
 
+
             }
 
         }
+
+        Program program = getProgramForUser(userId);
+
+        System.out.println("");
+        System.out.println("Generated Data Summary:");
+        System.out.printf("Created: %s\n", program.getCreated());
+        System.out.printf("Test Date: %s\n", program.getTest().getDate());
+        System.out.printf("Workout Days: %s (%s), %s (%s), %s (%s)\n",
+                DayOfWeek.of(day1 == 0 ? 7 : day1), day1,
+                DayOfWeek.of(day2 == 0 ? 7 : day2), day2,
+                DayOfWeek.of(day3 == 0 ? 7 : day3), day3);
+
+        System.out.printf("Skipped Workouts: %s\n", skipCount);
+        System.out.println("Workouts:");
+        for (Workout workout : program.getWorkouts()) {
+            System.out.printf("\t%s, %s\n", ((java.sql.Date) workout.getDate()).toLocalDate().getDayOfWeek(), workout.getDate());
+        }
+        
+        System.out.println("--------");
+
 
     }
 }
