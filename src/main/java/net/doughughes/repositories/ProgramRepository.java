@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.sql.Date;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
@@ -32,10 +33,11 @@ public class ProgramRepository {
     public void saveProgram(Program program, long userId) {
         // save program
         Long programId = this.template.queryForObject(
-                "INSERT INTO program (weeks, user_id) VALUES (?,?) RETURNING id",
+                "INSERT INTO program (weeks, user_id, created) VALUES (?,?,?) RETURNING id",
                 long.class,
                 program.getWeeks(),
-                userId);
+                userId,
+                Date.valueOf(program.getCreated()));
         // set the program ID to the generated PK id
         program.setId(programId);
 
@@ -74,7 +76,7 @@ public class ProgramRepository {
                 (resultSet) -> {
                     Integer weeks = null;
                     Long id = null;
-                    Date created = null;
+                    LocalDate created = null;
                     HashSet<Integer> selectedDays = new HashSet<>();
                     Map<Long, Goal> goals = new HashMap<>();
 
@@ -83,7 +85,7 @@ public class ProgramRepository {
                         // get the weeks (over and over)
                         weeks = resultSet.getInt("weeks");
                         id = resultSet.getLong("program_id");
-                        created = resultSet.getDate("created");
+                        created = resultSet.getDate("created").toLocalDate();
 
                         // collect the days
                         selectedDays.add(resultSet.getInt("day_id"));
@@ -148,13 +150,13 @@ public class ProgramRepository {
         // update the program creation date to 16 days ago
         this.template.update(
                 "UPDATE program SET created = ? WHERE id = ?",
-                java.sql.Date.valueOf(createdDate),
+                Date.valueOf(createdDate),
                 programId);
 
         // set the days of the week
-        int day1 = rand.nextInt(2);
-        int day2 = rand.nextInt(3) + 2;
-        int day3 = rand.nextInt(2) + 5;
+        int day1 = rand.nextInt(2) + 1;
+        int day2 = rand.nextInt(3) + 3;
+        int day3 = rand.nextInt(2) + 6;
 
         this.template.update("" +
                         "INSERT INTO program_day (program_id, day_id) VALUES (?, ?); " +
@@ -173,7 +175,7 @@ public class ProgramRepository {
                         "VALUES (?, ?) RETURNING id",
                 Integer.class,
                 2,
-                java.sql.Date.valueOf(testDate)
+                Date.valueOf(testDate)
         );
 
         // get the exercises and goals in this program
@@ -214,18 +216,31 @@ public class ProgramRepository {
             }
         }
 
+        // is today a workout day?
+        int dayOfWeek = LocalDate.now().getDayOfWeek().getValue();
+
+        // if so, we may or may not have done the workout....
+        int didWorkout = 0;
+        if ((dayOfWeek == day1 ||
+                dayOfWeek == day2 ||
+                dayOfWeek == day3) && rand.nextBoolean()) {
+            // today is a workout day and we already worked out
+            didWorkout++;
+        }
+
         // create the workout data
-        long between = DAYS.between(testDate, LocalDate.now()) - 1;
+        long between = (DAYS.between(testDate, LocalDate.now()) - 1) + didWorkout;
         boolean skipped = false;
         int skipCount = 0;
+        List<LocalDate> skippedDates = new ArrayList<>();
         for (int days = 1; days <= between; days++) {
             LocalDate thisDay = testDate.plusDays(days);
-            int dayOfWeek = thisDay.getDayOfWeek().getValue();
+            dayOfWeek = thisDay.getDayOfWeek().getValue();
 
             // is this a workout day?
-            if (dayOfWeek == (day1 == 0 ? 7 : day1) ||
-                    dayOfWeek == (day2 == 0 ? 7 : day2) ||
-                    dayOfWeek == (day3 == 0 ? 7 : day3) || skipped) {
+            if (dayOfWeek == day1 ||
+                    dayOfWeek == day2 ||
+                    dayOfWeek == day3 || skipped) {
 
                 //System.out.println(thisDay);
 
@@ -233,12 +248,13 @@ public class ProgramRepository {
                 if (rand.nextInt(6) == 0) {
                     System.out.printf("** Skipping workout on %s **\n", thisDay);
                     skipped = true;
+                    skippedDates.add(thisDay);
                     skipCount++;
                     continue;
                 }
-                if (!(dayOfWeek == (day1 == 0 ? 7 : day1) ||
-                        dayOfWeek == (day2 == 0 ? 7 : day2) ||
-                        dayOfWeek == (day3 == 0 ? 7 : day3)))
+                if (!(dayOfWeek == day1 ||
+                        dayOfWeek == day2 ||
+                        dayOfWeek == day3))
                     System.out.printf("** Doing makeup workout on %s **\n", thisDay);
 
                 // reset the skipped state
@@ -250,7 +266,7 @@ public class ProgramRepository {
                                 "VALUES (?, ?) RETURNING id",
                         Integer.class,
                         2,
-                        java.sql.Date.valueOf(thisDay)
+                        Date.valueOf(thisDay)
                 );
 
                 // create workout details
@@ -274,6 +290,7 @@ public class ProgramRepository {
 
         }
 
+
         Program program = getProgramForUser(userId);
 
         System.out.println("");
@@ -281,16 +298,20 @@ public class ProgramRepository {
         System.out.printf("Created: %s\n", program.getCreated());
         System.out.printf("Test Date: %s\n", program.getTest().getDate());
         System.out.printf("Workout Days: %s (%s), %s (%s), %s (%s)\n",
-                DayOfWeek.of(day1 == 0 ? 7 : day1), day1,
-                DayOfWeek.of(day2 == 0 ? 7 : day2), day2,
-                DayOfWeek.of(day3 == 0 ? 7 : day3), day3);
+                DayOfWeek.of(day1), day1,
+                DayOfWeek.of(day2), day2,
+                DayOfWeek.of(day3), day3);
+        System.out.printf("Worked out today?: %s\n", didWorkout == 1);
 
-        System.out.printf("Skipped Workouts: %s\n", skipCount);
+        System.out.println("Skipped Workouts:");
+        for (LocalDate skippedDate : skippedDates) {
+            System.out.printf("\t%s, %s\n", skippedDate.getDayOfWeek(), skippedDate);
+        }
         System.out.println("Workouts:");
         for (Workout workout : program.getWorkouts()) {
-            System.out.printf("\t%s, %s\n", ((java.sql.Date) workout.getDate()).toLocalDate().getDayOfWeek(), workout.getDate());
+            System.out.printf("\t%s, %s\n", workout.getDate().getDayOfWeek(), workout.getDate());
         }
-        
+
         System.out.println("--------");
 
 

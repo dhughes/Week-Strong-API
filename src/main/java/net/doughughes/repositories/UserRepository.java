@@ -6,6 +6,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.sql.Date;
+
 @Component
 public class UserRepository {
 
@@ -21,11 +23,12 @@ public class UserRepository {
     public void saveUser(User user) {
         if (user.getId() == null) {
             Long userId = this.template.queryForObject(
-                    "INSERT INTO \"user\" (name, email, password) VALUES (?,?,?) RETURNING id",
+                    "INSERT INTO \"user\" (name, email, password, created) VALUES (?,?,?,?) RETURNING id",
                     long.class,
                     user.getName(),
                     user.getEmail(),
-                    user.getPassword());
+                    user.getPassword(),
+                    Date.valueOf(user.getCreated()));
             user.setId(userId);
         } else {
             this.template.update(
@@ -51,6 +54,7 @@ public class UserRepository {
                                     resultSet.getLong("id"),
                                     resultSet.getString("name"),
                                     resultSet.getString("email"),
+                                    resultSet.getDate("created").toLocalDate(),
                                     this.programRepository.getProgramForUser(resultSet.getLong("id"))
 
                             ), email, password);

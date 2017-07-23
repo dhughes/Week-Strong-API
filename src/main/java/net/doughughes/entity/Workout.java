@@ -1,16 +1,16 @@
 package net.doughughes.entity;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class Workout {
 
     private Long id;
-    private Date date;
+    private LocalDate date;
     private List<WorkoutRound> rounds = new ArrayList<>();
 
-    public Workout(long id, Date date) {
+    public Workout(long id, LocalDate date) {
         this.id = id;
         this.date = date;
     }
@@ -23,11 +23,11 @@ public class Workout {
         this.id = id;
     }
 
-    public Date getDate() {
+    public LocalDate getDate() {
         return this.date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 

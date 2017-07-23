@@ -31,7 +31,7 @@ public class TestRepository {
                         if (test == null) {
                             test = new Test(
                                     resultSet.getLong("test_id"),
-                                    resultSet.getDate("date")
+                                    resultSet.getDate("date").toLocalDate()
                             );
                         }
 

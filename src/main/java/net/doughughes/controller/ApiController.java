@@ -13,8 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -69,7 +69,7 @@ public class ApiController {
                 goals.add(goal);
             }
 
-            Program program = new Program(programBean.getSelectedDays(), programBean.getWeeks(), goals, new Date());
+            Program program = new Program(programBean.getSelectedDays(), programBean.getWeeks(), goals, LocalDate.now());
 
             this.programRepository.saveProgram(program, user.getId());
         }

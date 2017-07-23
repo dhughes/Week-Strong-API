@@ -1,7 +1,9 @@
 package net.doughughes.entity;
 
+import net.doughughes.bean.Event;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class Program {
@@ -10,19 +12,19 @@ public class Program {
     private final List<Integer> selectedDays;
     private final Integer weeks;
     private List<Goal> goals;
-    private Date created;
+    private LocalDate created;
     private Test test;
     private List<Workout> workouts = new ArrayList<>();
 
 
-    public Program(List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, Date created) {
+    public Program(List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, LocalDate created) {
         this.selectedDays = selectedDays;
         this.weeks = weeks;
         this.goals = goals;
         this.created = created;
     }
 
-    public Program(Long id, List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, Date created, Test test, List<Workout> workouts) {
+    public Program(Long id, List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, LocalDate created, Test test, List<Workout> workouts) {
         this.id = id;
         this.selectedDays = selectedDays;
         this.weeks = weeks;
@@ -30,6 +32,14 @@ public class Program {
         this.created = created;
         this.test = test;
         this.workouts = workouts;
+    }
+
+    public List<Event> getEventHistory() {
+        List<Event> eventHistory = new ArrayList<>();
+
+        // find the sunday of or before this program was created
+
+        return eventHistory;
     }
 
     public Long getId() {
@@ -56,11 +66,11 @@ public class Program {
         this.goals = goals;
     }
 
-    public Date getCreated() {
+    public LocalDate getCreated() {
         return this.created;
     }
 
-    public void setCreated(Date created) {
+    public void setCreated(LocalDate created) {
         this.created = created;
     }
 

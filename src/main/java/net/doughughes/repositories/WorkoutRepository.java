@@ -37,7 +37,7 @@ public class WorkoutRepository {
                             // no workout yet? create the first one!
                             workout = new Workout(
                                     resultSet.getLong("workout_id"),
-                                    resultSet.getDate("date")
+                                    resultSet.getDate("date").toLocalDate()
                             );
 
                             workouts.add(workout);
