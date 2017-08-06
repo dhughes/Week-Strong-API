@@ -1,7 +1,13 @@
 package net.doughughes.entity;
 
+import com.fasterxml.jackson.annotation.JsonView;
+import net.doughughes.util.View;
+
 public class Goal {
+    @JsonView(View.Program.class)
     private Exercise exercise;
+
+    @JsonView(View.Program.class)
     private int goal;
 
     public Goal(Exercise exercise, Integer goal) {

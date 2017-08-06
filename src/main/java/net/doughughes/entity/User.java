@@ -12,9 +12,7 @@ public class User {
     private LocalDate created;
     @JsonIgnore
     private String password;
-    // one to one user to program (though a user could have multiple programs over time)
-    // maybe this will end up being a list on the server side?
-    private Program program = null;
+
 
     public User(String name, String email, String password) {
         this.name = name;
@@ -23,12 +21,11 @@ public class User {
         this.created = LocalDate.now();
     }
 
-    public User(long id, String name, String email, LocalDate created, Program program) {
+    public User(long id, String name, String email, LocalDate created) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.created = created;
-        this.program = program;
     }
 
     public Long getId() {
@@ -65,14 +62,6 @@ public class User {
 
     public void setCreated(LocalDate created) {
         this.created = created;
-    }
-
-    public Program getProgram() {
-        return this.program;
-    }
-
-    public void setProgram(Program program) {
-        this.program = program;
     }
 
     @JsonIgnore

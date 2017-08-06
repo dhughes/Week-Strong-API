@@ -1,25 +1,39 @@
 package net.doughughes.entity;
 
-import net.doughughes.bean.Event;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonView;
+import net.doughughes.bean.ProgramState;
+import net.doughughes.util.View;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.Period;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
+
 
 public class Program {
 
+    @JsonView(View.Program.class)
     private Long id;
-    private final List<Integer> selectedDays;
-    private final Integer weeks;
-    private List<Goal> goals;
-    private LocalDate created;
-    private Test test;
-    private List<Workout> workouts = new ArrayList<>();
 
+    @JsonView(View.Program.class)
+    private final List<Integer> selectedDays;
+
+    @JsonView(View.Program.class)
+    private final Integer weeks;
+
+    @JsonView(View.Program.class)
+    private List<Goal> goals;
+
+    @JsonView(View.Program.class)
+    private LocalDate created;
+
+    // todo: implement this
+    @JsonView(View.Program.class)
+    private ProgramState state = ProgramState.REST;
 
     public Program(List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, LocalDate created) {
         this.selectedDays = selectedDays;
@@ -28,68 +42,28 @@ public class Program {
         this.created = created;
     }
 
-    public Program(Long id, List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, LocalDate created, Test test, List<Workout> workouts) {
+    public Program(Long id, List<Integer> selectedDays, Integer weeks, ArrayList<Goal> goals, LocalDate created) {
         this.id = id;
         this.selectedDays = selectedDays;
         this.weeks = weeks;
         this.goals = goals;
         this.created = created;
-        this.test = test;
-        this.workouts = workouts;
     }
 
-    public List<Event> getHistory() {
-        List<Event> eventHistory = new ArrayList<>();
+    @JsonView(View.Program.class)
+    public LocalDate getNextWorkoutDate() {
+        return getNextWorkoutDates().get(0);
+    }
 
-        LocalDate today = LocalDate.now();
-
-        // find the sunday of or before this program was created
-        LocalDate beginDate = getCreated().getDayOfWeek().getValue() == 7
-                ? getCreated()
-                : getCreated().with(TemporalAdjusters.previous(DayOfWeek.SUNDAY));
-
-        // find the saturday of today or the end of the week.
-        LocalDate endDate = today.getDayOfWeek().getValue() == 6 ? today : today.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
-
-        // create our history
-        for (int d = 0; d <= Period.between(beginDate, endDate).getDays(); d++) {
-            LocalDate thisDate = beginDate.plusDays(d);
-            Event event = new Event(thisDate, !thisDate.isBefore(getTest().getDate()));
-
-            // is this a workout day?
-            boolean isWorkoutDay = getSelectedDays().contains(thisDate.getDayOfWeek().getValue());
-            Optional<Workout> workout = getWorkouts().stream().filter(work -> work.getDate().equals(event.getDate())).findFirst();
-            boolean workedOut = false;
-            if (workout.isPresent()) {
-                workedOut = true;
-                event.setWorkout(workout.get().getId());
-            }
-
-            // if we're in the program figure out what type of event this is
-            if (event.isInProgram()) {
-                // is this the test day?
-                if (thisDate.equals(getTest().getDate())) {
-                    event.setType(Event.Type.TEST);
-
-                    // did we workout on a workout day? (that's just a regular workout)
-                } else if (workedOut && isWorkoutDay) {
-                    event.setType(Event.Type.WORKOUT);
-
-                    // did we skip a workout day? (that's a skipped workout)
-                } else if (!workedOut && isWorkoutDay) {
-                    event.setType(Event.Type.SKIP);
-
-                    // did we workout on a non-workout day? (that's a makeup workout)
-                } else if (workedOut && !isWorkoutDay) {
-                    event.setType(Event.Type.MAKEUP);
-                }
-            }
-
-            // add the event to history
-            eventHistory.add(event);
-        }
-
-        return eventHistory;
+    @JsonIgnore
+    public List<LocalDate> getNextWorkoutDates() {
+        return getSelectedDays().stream()
+                // convert the selected days to actual dates of the next workout
+                .map(day -> LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.of(day))))
+                // sort the dates
+                .sorted(Comparator.naturalOrder())
+                // collect into a list
+                .collect(Collectors.toList());
     }
 
     public Long getId() {
@@ -124,19 +98,5 @@ public class Program {
         this.created = created;
     }
 
-    public Test getTest() {
-        return this.test;
-    }
-
-    public void setTest(Test test) {
-        this.test = test;
-    }
-
-    public List<Workout> getWorkouts() {
-        return this.workouts;
-    }
-
-    public void setWorkouts(List<Workout> workouts) {
-        this.workouts = workouts;
-    }
 }
+

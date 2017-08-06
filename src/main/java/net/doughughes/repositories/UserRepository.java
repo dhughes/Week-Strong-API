@@ -12,12 +12,10 @@ import java.sql.Date;
 public class UserRepository {
 
     private final JdbcTemplate template;
-    private final ProgramRepository programRepository;
 
     @Autowired
-    public UserRepository(JdbcTemplate template, ProgramRepository programRepository) {
+    public UserRepository(JdbcTemplate template) {
         this.template = template;
-        this.programRepository = programRepository;
     }
 
     public void saveUser(User user) {
@@ -54,8 +52,7 @@ public class UserRepository {
                                     resultSet.getLong("id"),
                                     resultSet.getString("name"),
                                     resultSet.getString("email"),
-                                    resultSet.getDate("created").toLocalDate(),
-                                    this.programRepository.getProgramForUser(resultSet.getLong("id"))
+                                    resultSet.getDate("created").toLocalDate()
 
                             ), email, password);
         } catch (EmptyResultDataAccessException e) {

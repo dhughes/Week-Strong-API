@@ -5,7 +5,6 @@ public class CreateUserBean {
     private String name;
     private String email;
     private String password;
-    private CreateProgramBean program;
 
     public String getName() {
         return this.name;
@@ -31,11 +30,4 @@ public class CreateUserBean {
         this.password = password;
     }
 
-    public CreateProgramBean getProgram() {
-        return this.program;
-    }
-
-    public void setProgram(CreateProgramBean program) {
-        this.program = program;
-    }
 }

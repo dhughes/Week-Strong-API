@@ -13,6 +13,9 @@ public class CreateProgramBean {
     // number of weeks in the program
     private Integer weeks;
 
+    // the id of the owning user
+    private Integer userId;
+
     public Map<Integer, Integer> getExercises() {
         return this.exercises;
     }
@@ -35,5 +38,13 @@ public class CreateProgramBean {
 
     public void setWeeks(Integer weeks) {
         this.weeks = weeks;
+    }
+
+    public Integer getUserId() {
+        return this.userId;
+    }
+
+    public void setUserId(Integer userId) {
+        this.userId = userId;
     }
 }

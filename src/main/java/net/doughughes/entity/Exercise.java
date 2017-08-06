@@ -1,10 +1,17 @@
 package net.doughughes.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonView;
+import net.doughughes.util.View;
+
 public class Exercise {
+    @JsonView(View.Program.class)
     private final Long id;
+    @JsonView(View.Program.class)
     private final String name;
+    @JsonView(View.Program.class)
     private final String image;
+    
     private final int defaultGoal;
     private final int minimum;
     private final int step;
@@ -20,6 +27,7 @@ public class Exercise {
         this.step = step;
         this.description = description;
     }
+
 
     public Long getId() {
         return this.id;

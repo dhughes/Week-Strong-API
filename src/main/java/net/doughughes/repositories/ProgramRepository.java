@@ -1,34 +1,26 @@
 package net.doughughes.repositories;
 
+import net.doughughes.bean.Event;
 import net.doughughes.entity.Exercise;
 import net.doughughes.entity.Goal;
 import net.doughughes.entity.Program;
-import net.doughughes.entity.Workout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.Date;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
-
-import static java.time.temporal.ChronoUnit.DAYS;
 
 @Component
 public class ProgramRepository {
 
     private final JdbcTemplate template;
-    private final WorkoutRepository workoutRepository;
-    private final TestRepository testRepository;
 
     @Autowired
-    public ProgramRepository(JdbcTemplate template, WorkoutRepository workoutRepository, TestRepository testRepository) {
+    public ProgramRepository(JdbcTemplate template) {
         this.template = template;
-        this.workoutRepository = workoutRepository;
-        this.testRepository = testRepository;
     }
-
 
     public void saveProgram(Program program, long userId) {
         // save program
@@ -61,7 +53,7 @@ public class ProgramRepository {
         }
     }
 
-    public Program getProgramForUser(long userId) {
+    public Program getLatestProgramForUser(long userId) {
 
         return this.template.query(
                 "SELECT p.id AS program_id, p.weeks, p.created, pd.day_id, g.goal, e.id AS exercise_id, e.name, e.description, e.image, e.defaultgoal, e.minimum, e.step " +
@@ -119,201 +111,17 @@ public class ProgramRepository {
                             new ArrayList<Integer>(selectedDays),
                             weeks,
                             new ArrayList<Goal>(goals.values()),
-                            created,
-                            this.testRepository.getTestForProgram(id),
-                            this.workoutRepository.getWorkoutsForProgram(id)
+                            created
                     );
                 }
                 , userId
                 , userId);
     }
 
-    public void generateTestData() {
-
-        System.out.println("--------");
-
-        int userId = 16;
-        int programId = 2;
-        Random rand = new Random();
-        LocalDate createdDate = LocalDate.now().minusDays(20);
-
-        // remove all workouts and test records
-        // delete the program's days
-        this.template.update("" +
-                        "DELETE FROM test_round;" +
-                        "DELETE FROM test;" +
-                        "DELETE FROM workout_round;\n" +
-                        "DELETE FROM workout;" +
-                        "DELETE FROM program_day WHERE program_id = ?",
-                programId);
-
-        // update the program creation date to 16 days ago
-        this.template.update(
-                "UPDATE program SET created = ? WHERE id = ?",
-                Date.valueOf(createdDate),
-                programId);
-
-        // set the days of the week
-        int day1 = rand.nextInt(2) + 1;
-        int day2 = rand.nextInt(3) + 3;
-        int day3 = rand.nextInt(2) + 6;
-
-        this.template.update("" +
-                        "INSERT INTO program_day (program_id, day_id) VALUES (?, ?); " +
-                        "INSERT INTO program_day (program_id, day_id) VALUES (?, ?); " +
-                        "INSERT INTO program_day (program_id, day_id) VALUES (?, ?); ",
-                programId, day1,
-                programId, day2,
-                programId, day3
-        );
-
-
-        // create a test record
-        LocalDate testDate = createdDate.plusDays(2);
-        Integer testId = this.template.queryForObject("" +
-                        "INSERT INTO test (program_id, date) " +
-                        "VALUES (?, ?) RETURNING id",
-                Integer.class,
-                2,
-                Date.valueOf(testDate)
-        );
-
-        // get the exercises and goals in this program
-        List<Goal> goals = this.template.query("" +
-                        "SELECT e.*, g.goal " +
-                        "FROM exercise e JOIN goal g " +
-                        "   ON g.exercise_id = e.id " +
-                        "WHERE g.program_id = ?",
-                (resultSet, i) -> new Goal(
-                        new Exercise(
-                                resultSet.getLong("id"),
-                                resultSet.getString("name"),
-                                resultSet.getString("description"),
-                                resultSet.getString("image"),
-                                resultSet.getInt("defaultGoal"),
-                                resultSet.getInt("minimum"),
-                                resultSet.getInt("step")
-                        ),
-                        resultSet.getInt("goal")
-                ),
-                programId
-        );
-
-        // create the test data
-
-        // we're doing 5 rounds for each
-        for (int round = 1; round <= 5; round++) {
-            // add a record for each exercise/goal
-            for (Goal goal : goals) {
-                this.template.update("" +
-                                "INSERT INTO test_round (test_id, round, reps, exercise_id) " +
-                                "VALUES (?, ?, ?, ?)",
-                        testId,
-                        round,
-                        rand.nextInt(goal.getGoal() / 10) + 1,
-                        goal.getExercise().getId()
-                );
-            }
-        }
-
-        // is today a workout day?
-        int dayOfWeek = LocalDate.now().getDayOfWeek().getValue();
-
-        // if so, we may or may not have done the workout....
-        int didWorkout = 0;
-        if ((dayOfWeek == day1 ||
-                dayOfWeek == day2 ||
-                dayOfWeek == day3) && rand.nextBoolean()) {
-            // today is a workout day and we already worked out
-            didWorkout++;
-        }
-
-        // create the workout data
-        long between = (DAYS.between(testDate, LocalDate.now()) - 1) + didWorkout;
-        boolean skipped = false;
-        int skipCount = 0;
-        List<LocalDate> skippedDates = new ArrayList<>();
-        for (int days = 1; days <= between; days++) {
-            LocalDate thisDay = testDate.plusDays(days);
-            dayOfWeek = thisDay.getDayOfWeek().getValue();
-
-            // is this a workout day?
-            if (dayOfWeek == day1 ||
-                    dayOfWeek == day2 ||
-                    dayOfWeek == day3 || skipped) {
-
-                //System.out.println(thisDay);
-
-                // did we miss this day?
-                if (rand.nextInt(6) == 0) {
-                    System.out.printf("** Skipping workout on %s **\n", thisDay);
-                    skipped = true;
-                    skippedDates.add(thisDay);
-                    skipCount++;
-                    continue;
-                }
-                if (!(dayOfWeek == day1 ||
-                        dayOfWeek == day2 ||
-                        dayOfWeek == day3))
-                    System.out.printf("** Doing makeup workout on %s **\n", thisDay);
-
-                // reset the skipped state
-                skipped = false;
-
-                // create the workout
-                Integer workoutId = this.template.queryForObject("" +
-                                "INSERT INTO workout (program_id, date) " +
-                                "VALUES (?, ?) RETURNING id",
-                        Integer.class,
-                        2,
-                        Date.valueOf(thisDay)
-                );
-
-                // create workout details
-                // we're doing 5 rounds for each
-                for (int round = 1; round <= 5; round++) {
-                    // add a record for each exercise/goal
-                    for (Goal goal : goals) {
-                        this.template.update("" +
-                                        "INSERT INTO workout_round (workout_id, round, reps, exercise_id) " +
-                                        "VALUES (?, ?, ?, ?)",
-                                workoutId,
-                                round,
-                                rand.nextInt(goal.getGoal() / 10) + 1,
-                                goal.getExercise().getId()
-                        );
-                    }
-                }
-
-
-            }
-
-        }
-
-
-        Program program = getProgramForUser(userId);
-
-        System.out.println("");
-        System.out.println("Generated Data Summary:");
-        System.out.printf("Created: %s\n", program.getCreated());
-        System.out.printf("Test Date: %s\n", program.getTest().getDate());
-        System.out.printf("Workout Days: %s (%s), %s (%s), %s (%s)\n",
-                DayOfWeek.of(day1), day1,
-                DayOfWeek.of(day2), day2,
-                DayOfWeek.of(day3), day3);
-        System.out.printf("Worked out today?: %s\n", didWorkout == 1);
-
-        System.out.println("Skipped Workouts:");
-        for (LocalDate skippedDate : skippedDates) {
-            System.out.printf("\t%s, %s\n", skippedDate.getDayOfWeek(), skippedDate);
-        }
-        System.out.println("Workouts:");
-        for (Workout workout : program.getWorkouts()) {
-            System.out.printf("\t%s, %s\n", workout.getDate().getDayOfWeek(), workout.getDate());
-        }
-
-        System.out.println("--------");
-
-
+    public List<Event> getProgramHistory(Integer id) {
+        return this.template.query(
+                "SELECT * FROM workout",
+                (resultSet, i) ->
+                        new Event());
     }
 }
